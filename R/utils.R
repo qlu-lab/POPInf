@@ -261,7 +261,7 @@ optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
 #' @return weights
 #' @export
-optim_weights <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method, focal_index) {
+optim_weights <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method) {
   # Objective function to minimize
   psi_y_lab <- psi(X_lab, Y_lab, theta, quant = quant, method = method)
   psi_yhat_lab <- psi(X_lab, Yhat_lab, theta, quant = quant, method = method)
