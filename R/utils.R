@@ -2,10 +2,6 @@
 # General functions for M-estimation and Z-estimation
 #####################################################
 
-#####################################################
-# Common function for predicted labels and covariates
-#####################################################
-
 #' Calculation of the matrix A based on single dataset
 #'
 #' \code{A} function for the calculation of the matrix A based on single dataset
