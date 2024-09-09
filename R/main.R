@@ -64,7 +64,7 @@ pop_M <- function(X_lab = NA, X_unlab = NA, Y_lab, Yhat_lab, Yhat_unlab,
   est <- est_ini(X_lab, Y_lab, quant, method)
   if (is.na(sum(weights))) {
     current_w <- rep(0, q)
-    optimized_weight <- optim_weights(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method, focal_index)
+    optimized_weight <- optim_weights(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
     current_w <- optimized_weight
   } else{
     current_w <- weights
