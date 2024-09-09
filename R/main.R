@@ -14,11 +14,8 @@
 #' @param Yhat_unlab Array or DataFrame of predicted outcomes in unlabeled data.
 #' @param alpha Specifies the confidence level as 1 - alpha for confidence intervals.
 #' @param weights weights vector POP-Inf linear regression (d-dimensional, where d equals the number of covariates).
-#' @param max_iterations Sets the maximum number of iterations for the optimization process to derive weights.
-#' @param convergence_threshold Sets the convergence threshold for the optimization process to derive weights.
 #' @param quant quantile for quantile estimation
 #' @param intercept Boolean indicating if the input covariates' data contains the intercept (TRUE if the input data contains)
-#' @param focal_index Identifies the focal index for variance reduction.
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
 #' @return  A summary table presenting point estimates, standard error, confidence intervals (1 - alpha), P-values, and weights.
 #' @examples
@@ -39,7 +36,7 @@
 
 # A general function for M-estimation
 pop_M <- function(X_lab = NA, X_unlab = NA, Y_lab, Yhat_lab, Yhat_unlab,
-                  alpha = 0.05, weights = NA, max_iterations = 100, convergence_threshold = 0.05, quant = NA, intercept = FALSE, focal_index = NA,
+                  alpha = 0.05, weights = NA, quant = NA, intercept = FALSE,
                   method) {
   # Common values
   if (method %in% c("ols", "logistic", "poisson")) {
@@ -65,43 +62,18 @@ pop_M <- function(X_lab = NA, X_unlab = NA, Y_lab, Yhat_lab, Yhat_unlab,
 
   # Initial values
   est <- est_ini(X_lab, Y_lab, quant, method)
-  current_w <- if (is.na(sum(weights))) rep(0, q) else weights
-
-  # Iteratively update the weights and the coefficients
   if (is.na(sum(weights))) {
-    converged <- FALSE
-    iteration <- 1
+    current_w <- rep(0, q)
+    optimized_weight <- optim_weights(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method, focal_index)
+    current_w <- optimized_weight
+  } else{
+    current_w <- weights
 
-    while (!converged && iteration <= max_iterations) {
-      previous_w <- current_w
-
-      # Update the weights
-      if (is.na(focal_index)) {
-        indices_to_update <- 1:q
-      } else {
-        indices_to_update <- focal_index + 1
-      }
-
-      est <- optim_est(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
-      for (j in indices_to_update) {
-        optimized_weight <- optim_weights(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
-        current_w[j] <- optimized_weight
-      }
-      # Check for convergence
-      if (max(abs(current_w[indices_to_update] - previous_w[indices_to_update])) < convergence_threshold) {
-        converged <- TRUE
-      } else {
-        iteration <- iteration + 1
-      }
-    }
   }
 
   # Calculate the final coefficients and standard errors
-  final_est <- optim_est(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
-  A_lab_inv <- solve(A(X_lab, Y_lab, quant, est, method))
-  A_unlab_inv <- solve(A(X_unlab, Yhat_unlab, quant, est, method))
-  final_sigma <- Sigma_cal(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, final_est, quant, A_lab_inv, A_unlab_inv, method)
-  est <- final_est
+  est <- optim_est(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
+  final_sigma <- Sigma_cal(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, current_w, est, quant, method)
   standard_errors <- sqrt(diag(final_sigma) / n)
   p_values <- 2 * pnorm(abs(est / standard_errors), lower.tail = FALSE)
 
