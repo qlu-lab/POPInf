@@ -250,7 +250,6 @@ optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
 #' One-step update for obtaining the weight vector
 #'
 #' \code{optim_weights} function for One-step update for obtaining estimator
-#' @param j j-th coordinate of weights vector
 #' @param X_lab Array or DataFrame containing observed covariates in labeled data.
 #' @param X_unlab Array or DataFrame containing observed or predicted covariates in unlabeled data.
 #' @param Y_lab Array or DataFrame of observed outcomes in labeled data.
@@ -262,7 +261,7 @@ optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
 #' @return weights
 #' @export
-optim_weights <- function(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method, focal_index) {
+optim_weights <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method, focal_index) {
   # Objective function to minimize
   psi_y_lab <- psi(X_lab, Y_lab, theta, quant = quant, method = method)
   psi_yhat_lab <- psi(X_lab, Yhat_lab, theta, quant = quant, method = method)
