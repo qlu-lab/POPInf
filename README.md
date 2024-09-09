@@ -39,8 +39,8 @@ fit_mean <- pop_M(Y_lab = Y_lab, Yhat_lab = Yhat_lab, Yhat_unlab = Yhat_unlab,
 
 print(fit_mean)
 
-#   Estimate  Std.Error Lower.CI Upper.CI       P.value    Weight
-# 1 1.623601 0.05514429  1.51552 1.731682 1.557956e-190 0.9226747
+#   Estimate  Std.Error Lower.CI Upper.CI P.value    Weight
+# 1 3.505484 0.05720132 3.393371 3.617596       0 0.9044718
 ```
 
 ### Linear regression
@@ -52,9 +52,9 @@ fit_ols <- pop_M(X_lab = X_lab, X_unlab = X_unlab,
 
 print(fit_ols)
 
-#     Estimate  Std.Error  Lower.CI Upper.CI       P.value    Weight
-#    1.6181357 0.05351775 1.5132429 1.723029 8.093485e-201 0.8811378
-# X1 0.8716172 0.07335443 0.7278452 1.015389  1.463365e-32 1.0000000
+#     Estimate  Std.Error  Lower.CI Upper.CI      P.value    Weight
+#    3.5089480 0.05591387 3.3993588 3.618537 0.000000e+00 0.8611889
+# X1 0.8980173 0.08565766 0.7301313 1.065903 1.025461e-25 1.0000000
 ```
 
 ### Logistic regression
@@ -76,8 +76,8 @@ fit_logistic <- pop_M(X_lab = X_lab, X_unlab = X_unlab,
 print(fit_logistic)
 
 #      Estimate  Std.Error   Lower.CI   Upper.CI      P.value    Weight
-#    -0.1355928 0.08443198 -0.3010764 0.02989085 1.082868e-01 0.4218688
-# X1  0.5876862 0.08938035  0.4125039 0.76286842 4.861518e-11 0.5340878
+#    -0.1289001 0.08347881 -0.2925156 0.03471532 1.225626e-01 0.4290559
+# X1  0.5749601 0.08653142  0.4053617 0.74455861 3.041970e-11 0.5337078
 ```
 
 ### Poisson regression
@@ -99,8 +99,8 @@ fit_poisson <- pop_M(X_lab = X_lab, X_unlab = X_unlab,
 print(fit_poisson)
 
 #     Estimate  Std.Error  Lower.CI  Upper.CI      P.value    Weight
-#    1.2227700 0.01730779 1.1888473 1.2566926 0.000000e+00 0.8460699
-# X1 0.2568325 0.02437762 0.2090532 0.3046118 5.921326e-26 0.9171068
+#    0.9732937 0.02261537 0.9289684 1.0176191 0.000000e+00 0.8392517
+# X1 0.3188511 0.03125507 0.2575923 0.3801099 1.950752e-24 0.8303991
 ```
 
 ## Analysis script
