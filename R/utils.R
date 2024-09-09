@@ -2,6 +2,9 @@
 # General functions for M-estimation and Z-estimation
 #####################################################
 
+#####################################################
+# Common function for predicted labels and covariates
+#####################################################
 
 #' Calculation of the matrix A based on single dataset
 #'
@@ -29,7 +32,6 @@ A <- function(X, Y, quant = NA, theta, method) {
   }
   return(A)
 }
-
 
 #' Initial estimation
 #'
@@ -111,8 +113,7 @@ mean_psi <- function(X, Y, theta, quant = NA, method) {
 #' @export
 mean_psi_pop <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method) {
   if (method %in% c("ols", "logistic", "poisson")) {
-    psi_pop <- mean_psi(X_lab, Y_lab, theta, quant, method) +
-      as.vector(w) * (mean_psi(X_unlab, Yhat_unlab, theta, quant, method) - mean_psi(X_lab, Yhat_lab, theta, quant, method))
+    psi_pop <- mean_psi(X_lab, Y_lab, theta, quant, method) + diag(w) %*% (mean_psi(X_unlab, Yhat_unlab, theta, quant, method) - mean_psi(X_lab, Yhat_lab, theta, quant, method))
   } else if (method %in% c("mean", "quantile")) {
     psi_pop <- mean_psi(X_lab, Y_lab, theta, quant, method) +
       w * (mean_psi(X_unlab, Yhat_unlab, theta, quant, method) - mean_psi(X_lab, Yhat_lab, theta, quant, method))
@@ -124,7 +125,6 @@ mean_psi_pop <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, 
 #####################################################
 # Designed for GLM
 #####################################################
-
 
 #' gradient of the link function
 #'
@@ -161,7 +161,6 @@ link_Hessian <- function(t, method) {
   return(hes)
 }
 
-
 #' Variance-covariance matrix of the estimation equation
 #'
 #' \code{Sigma_cal} function for variance-covariance matrix of the estimation equation
@@ -174,11 +173,11 @@ link_Hessian <- function(t, method) {
 #' @param theta parameter theta
 #' @param quant quantile for quantile estimation
 #' @param A_lab_inv Inverse of matrix A using labeled data
-#' @param A_unlab_inv Inverse of matrix A using unlabeled data
+#' @param Ahat_unlab_inv Inverse of matrix A using unlabeled data
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
 #' @return variance-covariance matrix of the estimation equation
 #' @export
-Sigma_cal <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, A_lab_inv, A_unlab_inv, method) {
+Sigma_cal <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method) {
   psi_y_lab <- psi(X_lab, Y_lab, theta, quant = quant, method = method)
   psi_yhat_lab <- psi(X_lab, Yhat_lab, theta, quant = quant, method = method)
   psi_yhat_unlab <- psi(X_unlab, Yhat_unlab, theta, quant = quant, method = method)
@@ -195,17 +194,32 @@ Sigma_cal <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
   M2 <- cov(t(psi_yhat_lab))
   M3 <- cov(t(psi_yhat_unlab))
   M4 <- cov(t(psi_y_lab), t(psi_yhat_lab))
+  if (method == "ols") {
+    A <- A(rbind(X_lab, X_unlab), c(Y_lab, Yhat_unlab), quant, theta, method)
+    A_inv <- solve(A)
+  } else if (method == "mean") {
+     A_inv <- 1
+  } else {
+    A_lab <- A(X_lab, Y_lab, quant, theta, method)
+    Ahat_lab <- A(X_lab, Yhat_lab, quant, theta, method)
+    Ahat_unlab <- A(X_unlab, Yhat_unlab, quant, theta, method)
+    A <- A_lab + diag(w) %*% (Ahat_unlab - Ahat_lab)
+    A_inv <- solve(A)
+  }
+
+  
   rho <- n / N
-  wTw <- w %*% t(w)
-  iTw <- matrix(rep(1, q), nrow = q) %*% t(w)
-  Sigma <- A_lab_inv %*% (M1 + wTw * M2 - (iTw + t(iTw)) * M4) %*% A_lab_inv + A_unlab_inv %*% (wTw * rho * M3) %*% A_unlab_inv
+  if (method == "mean") {
+    Sigma <- A_inv * (M1 + w * (M2 + rho * M3) * w - 2 * w * M4) * A_inv
+  } else {
+    Sigma <- A_inv %*% (M1 + diag(w) %*% (M2 + rho * M3) %*% diag(w) - 2 * diag(w) %*% M4) %*% A_inv
+  }
   return(Sigma)
 }
 
-
-#' Gradient descent for obtaining estimator
+#' One-step update for obtaining estimator
 #'
-#' \code{optim_est} function for gradient descent for obtaining estimator
+#' \code{optim_est} function for One-step update for obtaining estimator
 #' @param X_lab Array or DataFrame containing observed covariates in labeled data.
 #' @param X_unlab Array or DataFrame containing observed or predicted covariates in unlabeled data.
 #' @param Y_lab Array or DataFrame of observed outcomes in labeled data.
@@ -215,48 +229,31 @@ Sigma_cal <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
 #' @param theta parameter theta
 #' @param quant quantile for quantile estimation
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
-#' @param step_size step size for gradient descent
-#' @param max_iterations maximum of iterations for gradient descent
-#' @param convergence_threshold convergence threshold for gradient descent
 #' @return estimator
 #' @export
-optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method, step_size = 0.1, max_iterations = 500, convergence_threshold = 1e-6) {
-  if (method == "ols") {
-    n <- nrow(Y_lab)
-    N <- nrow(Yhat_unlab)
-    A_lab_inv <- solve(A(X_lab, Y_lab, quant, theta, method))
-    A_unlab_inv <- solve(A(X_unlab, Yhat_unlab, quant, theta, method))
-    theta <- 1 / n * A_lab_inv %*% t(X_lab) %*% Y_lab +
-      1 / N * as.vector(w) * A_unlab_inv %*% t(X_unlab) %*% Yhat_unlab -
-      1 / n * as.vector(w) * A_lab_inv %*% t(X_lab) %*% Yhat_lab
-    # theta <- lm(Y_lab ~ X_lab - 1)$coef + as.vector(w) * (lm(Yhat_unlab ~ X_unlab - 1)$coef - lm(Yhat_lab ~ X_lab - 1)$coef)
-  } else if (method == "mean") {
+optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method) {
+  if (method == "mean") {
     theta <- mean(Y_lab) + as.vector(w) * (mean(Yhat_unlab) - mean(Yhat_lab))
-  } else {
-    iteration <- 1
-    converged <- FALSE
-    while (!converged && iteration <= max_iterations) {
-      theta_old <- theta
-      subgrad <- mean_psi_pop(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = quant, method = method)
-      step_size_tmp <- step_size / sqrt(iteration)
-      theta <- theta_old - step_size_tmp * subgrad
-      # Check for convergence
-      if (max(abs(theta - theta_old)) < convergence_threshold) {
-        converged <- TRUE
-      } else {
-        iteration <- iteration + 1
-      }
-    }
+  } else if (method == "ols"){
+    A <- A(rbind(X_lab, X_unlab), c(Y_lab, Yhat_unlab), quant, theta, method)
+    A_inv <- solve(A)
+    theta <- theta - A_inv %*% mean_psi_pop(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = quant, method = method)
   }
-
+  else {
+    A_lab <- A(X_lab, Y_lab, quant, theta, method)
+    Ahat_lab <- A(X_lab, Yhat_lab, quant, theta, method)
+    Ahat_unlab <- A(X_unlab, Yhat_unlab, quant, theta, method)
+    A <- A_lab + diag(w) %*% (Ahat_unlab - Ahat_lab)
+    A_inv <- solve(A)
+    theta <- theta - A_inv %*% mean_psi_pop(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = quant, method = method)
+  }
   return(theta)
 }
 
 
-
-#' Gradient descent for obtaining the weight vector
+#' One-step update for obtaining the weight vector
 #'
-#' \code{optim_weights} function for gradient descent for obtaining estimator
+#' \code{optim_weights} function for One-step update for obtaining estimator
 #' @param j j-th coordinate of weights vector
 #' @param X_lab Array or DataFrame containing observed covariates in labeled data.
 #' @param X_unlab Array or DataFrame containing observed or predicted covariates in unlabeled data.
@@ -269,23 +266,35 @@ optim_est <- function(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, qua
 #' @param method indicates the method to be used for M-estimation. Options include "mean", "quantile", "ols", "logistic", and "poisson".
 #' @return weights
 #' @export
-optim_weights <- function(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method) {
+optim_weights <- function(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant = NA, method, focal_index) {
   # Objective function to minimize
-  A_lab_inv <- solve(A(X_lab, Y_lab, quant, theta, method))
-  A_unlab_inv <- solve(A(X_unlab, Yhat_unlab, quant, theta, method))
-  loss_function <- function(w_j) {
-    w[j] <- w_j
-    Sigma <- Sigma_cal(X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, theta, quant, A_lab_inv, A_unlab_inv, method)
-    return(Sigma[j, j])
+  psi_y_lab <- psi(X_lab, Y_lab, theta, quant = quant, method = method)
+  psi_yhat_lab <- psi(X_lab, Yhat_lab, theta, quant = quant, method = method)
+  psi_yhat_unlab <- psi(X_unlab, Yhat_unlab, theta, quant = quant, method = method)
+
+  n <- nrow(Y_lab)
+  N <- nrow(Yhat_unlab)
+  if (method %in% c("mean", "quantile")) {
+    q <- 1
+  } else {
+    q <- ncol(X_lab)
   }
-  optimization_result <- optim(par = w[j], fn = loss_function, method = "L-BFGS-B", lower = 0, upper = 1)
-  return(optimization_result$par)
+
+  A_lab_inv <- solve(A(X_lab, Y_lab, quant, theta, method))
+  M2 <- cov(t(psi_yhat_lab))
+  M3 <- cov(t(psi_yhat_unlab))
+  M4 <- cov(t(psi_y_lab), t(psi_yhat_lab))
+  rho <- n / N
+  w <- diag(A_lab_inv %*% M4 %*% A_lab_inv) / diag(A_lab_inv %*% (M2 + rho * M3) %*% A_lab_inv)
+  # lower bouned by 0 and upper bounded by 1
+  w[w < 0] <- 0
+  w[w > 1] <- 1
+  return(w)
 }
 
 ###############################################
 # Simulate the data for testing the functions
 ###############################################
-
 
 #' Simulate the data for testing the functions
 #'
@@ -295,7 +304,7 @@ optim_weights <- function(j, X_lab, X_unlab, Y_lab, Yhat_lab, Yhat_unlab, w, the
 #' @return simulated data
 #' @import randomForest MASS
 #' @export
-sim_data <- function(r = 0.9, binary = FALSE) {
+sim_data_labels <- function(r = 0.9, binary = FALSE) {
   # Input parameters
   n_train <- 500
   n_lab <- 500
