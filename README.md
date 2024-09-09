@@ -23,7 +23,7 @@ library(POPInf)
 
 # Load the simulated data
 set.seed(999)
-data <- sim_data()
+data <- sim_data_y()
 X_lab = data$X_lab ## Covariates in the labeled data
 X_unlab = data$X_unlab ## Covariates in the unlabeled data
 Y_lab = data$Y_lab ## Observed outcome in the labeled data
@@ -61,7 +61,7 @@ print(fit_ols)
 ```
 # Load the simulated data
 set.seed(999)
-data <- sim_data(binary = T)
+data <- sim_data_y(binary = T)
 X_lab = data$X_lab
 X_unlab = data$X_unlab
 Y_lab = data$Y_lab
@@ -84,7 +84,7 @@ print(fit_logistic)
 ```
 # Load the simulated data
 set.seed(999)
-data <- sim_data()
+data <- sim_data_y()
 X_lab = data$X_lab
 X_unlab = data$X_unlab
 Y_lab = round(data$Y_lab - min(data$Y_lab))
